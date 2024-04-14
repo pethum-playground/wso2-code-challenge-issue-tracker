@@ -8,6 +8,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"io"
+	"issue-analysis/entity"
 	"log"
 	"net/http"
 	"os"
@@ -23,13 +24,19 @@ func main() {
 	dsn := os.Getenv("DB_URL")
 	gptUrl := os.Getenv("GPT_URL")
 	message := os.Getenv("MESSAGE")
+	currentDate := time.Now().Local()
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
-	err = db.AutoMigrate(&Application{})
+	err = db.AutoMigrate(&entity.Application{})
 	if err != nil {
 		log.Fatal(err)
 		return
 	}
+
+	startOfDay := currentDate.Truncate(24 * time.Hour)
+	endOfDay := startOfDay.Add(24 * time.Hour)
+	issues := []entity.Issue{}
+	db.Where("createdAt >= ? AND createdAt < ?", startOfDay, endOfDay).Find(&issues)
 
 	req, err := json.Marshal(map[string]string{"message": message})
 	if err != nil {
@@ -54,8 +61,8 @@ func main() {
 
 	id, err := strconv.Atoi(os.Getenv("ANALYZE_ID"))
 	lastDateId, err := strconv.Atoi(os.Getenv("ANALYZE_LAST_DATE_ID"))
-	analyze := Application{Id: id, Name: "app.analyze", Value: gptResp[0].Message.Content}
-	analyzeDate := Application{Id: lastDateId, Name: "app.last_analyze_date", Value: time.Now().Local().Format("2006-01-02")}
+	analyze := entity.Application{Id: id, Name: "app.analyze", Value: gptResp[0].Message.Content}
+	analyzeDate := entity.Application{Id: lastDateId, Name: "app.last_analyze_date", Value: currentDate.Format("2006-01-02")}
 	db.Save(&analyze)
 	db.Save(&analyzeDate)
 }

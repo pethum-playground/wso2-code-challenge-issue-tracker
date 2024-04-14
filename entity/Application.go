@@ -1,4 +1,4 @@
-package main
+package entity
 
 type Application struct {
 	Id    int    `json:"id" gorm:"primaryKey"`
