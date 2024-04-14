@@ -11,6 +11,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
+	"time"
 )
 
 func main() {
@@ -20,10 +22,16 @@ func main() {
 	}
 	dsn := os.Getenv("DB_URL")
 	gptUrl := os.Getenv("GPT_URL")
+	message := os.Getenv("MESSAGE")
 
 	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	err = db.AutoMigrate(&Application{})
+	if err != nil {
+		log.Fatal(err)
+		return
+	}
 
-	req, err := json.Marshal(map[string]string{"message": "This is an issue tracker application. This issue type is an software issue give me a solution for this issue. Issue is there is an application which is run payroll in react. I cannot run it. Give answer in json"})
+	req, err := json.Marshal(map[string]string{"message": message})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -43,8 +51,11 @@ func main() {
 
 	gptResp := []GptResponse{}
 	json.Unmarshal(body, &gptResp)
-	fmt.Println(gptResp)
 
-	user := Application{Name: "app.analyze", Value: gptResp[0].Message.Content}
-	db.Create(&user)
+	id, err := strconv.Atoi(os.Getenv("ANALYZE_ID"))
+	lastDateId, err := strconv.Atoi(os.Getenv("ANALYZE_LAST_DATE_ID"))
+	analyze := Application{Id: id, Name: "app.analyze", Value: gptResp[0].Message.Content}
+	analyzeDate := Application{Id: lastDateId, Name: "app.last_analyze_date", Value: time.Now().Local().Format("2006-01-02")}
+	db.Save(&analyze)
+	db.Save(&analyzeDate)
 }
