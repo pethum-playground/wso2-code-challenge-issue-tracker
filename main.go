@@ -33,12 +33,9 @@ func main() {
 		return
 	}
 
-	startOfDay := currentDate.Truncate(24 * time.Hour)
-	endOfDay := startOfDay.Add(24 * time.Hour)
-	issues := []entity.Issue{}
-	db.Where("createdAt >= ? AND createdAt < ?", startOfDay, endOfDay).Find(&issues)
+	totalCount, doneCount, openCount, inProgressCount := entity.CountIssues(db)
 
-	req, err := json.Marshal(map[string]string{"message": message})
+	req, err := json.Marshal(map[string]string{"message": fmt.Sprintf(message, totalCount, openCount, inProgressCount, doneCount, currentDate.Format("2006-01-02"))})
 	if err != nil {
 		log.Fatal(err)
 	}
